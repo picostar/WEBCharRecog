@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Browser Drawing Demo</title>
+  <style>
+    /* Make the canvas fill the entire window */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #drawingCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      /* Keep it on top of other elements, if any */
+      z-index: 9999;
+      cursor: crosshair;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="drawingCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('drawingCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Dynamically resize canvas to fit the window
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    function startDrawing(e) {
+      isDrawing = true;
+      // Move the "pen" to the current pointer (stylus) location
+      [lastX, lastY] = [e.offsetX, e.offsetY];
+    }
+
+    function stopDrawing() {
+      isDrawing = false;
+      ctx.beginPath(); // Reset path so new strokes don’t connect to the old path
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+
+      // Optionally, detect whether pointer is a 'pen' (stylus)
+      // if (e.pointerType === 'pen') { ... }
+
+      // Set drawing style
+      ctx.lineWidth = 3;       // Pen thickness
+      ctx.lineCap = 'round';   // Round pen tip
+      ctx.strokeStyle = 'black';
+
+      // Draw a line from the previous point (lastX,lastY) to current pointer
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(e.offsetX, e.offsetY);
+      ctx.stroke();
+
+      // Update the last position to the current one
+      [lastX, lastY] = [e.offsetX, e.offsetY];
+    }
+
+    // Attach pointer event listeners (works for stylus, mouse, or touch)
+    canvas.addEventListener('pointerdown', startDrawing);
+    canvas.addEventListener('pointermove', draw);
+    canvas.addEventListener('pointerup', stopDrawing);
+    canvas.addEventListener('pointerout', stopDrawing);
+  </script>
+</body>
+</html>

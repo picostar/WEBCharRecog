@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Weaver Character Recognizer</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      background-color: #4285f4;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      padding: 10px;
+      background-color: #f0f0f0;
+      border-bottom: 1px solid #ccc;
+    }
+
+    button {
+      padding: 8px 15px;
+      cursor: pointer;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+
+    button:hover {
+      background-color: #3b78e7;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .canvas-container {
+      flex: 1;
+      position: relative;
+      border-right: 1px solid #ccc;
+    }
+
+    #drawingCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      background-color: #f8f8f8;
+    }
+
+    .grid-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .results-panel {
+      width: 300px;
+      padding: 20px;
+      background-color: #f5f5f5;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .result-box {
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: white;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .result-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #4285f4;
+    }
+
+    .code-display {
+      font-family: monospace;
+      word-break: break-all;
+      margin-top: 5px;
+    }
+
+    table.grid {
+      border-collapse: collapse;
+      margin: 10px 0;
+    }
+
+    table.grid td {
+      width: 30px;
+      height: 30px;
+      border: 1px solid #ccc;
+      text-align: center;
+      font-size: 12px;
+    }
+
+    .code-sequence {
+      background-color: #f0f0f0;
+      padding: 8px;
+      border-radius: 4px;
+      margin-top: 10px;
+      font-family: monospace;
+    }
+
+    .mode-selector {
+      display: flex;
+      margin-bottom: 15px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      background-color: #e0e0e0;
+      cursor: pointer;
+      border: 1px solid #ccc;
+    }
+
+    .mode-btn.active {
+      background-color: #4285f4;
+      color: white;
+      font-weight: bold;
+    }
+
+    .training-input {
+      display: flex;
+      margin-bottom: 15px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .training-input input {
+      width: 30px;
+      height: 30px;
+      font-size: 18px;
+      text-align: center;
+    }
+
+    .dictionary-display {
+      margin-top: 15px;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+    }
+
+    .dict-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .dict-table th, .dict-table td {
+      border: 1px solid #ddd;
+      padding: 6px;
+      text-align: center;
+    }
+
+    .dict-table th {
+      background-color: #f0f0f0;
+      position: sticky;
+      top: 0;
+    }
+
+    .status-box {
+      margin-top: auto;
+      padding: 10px;
+      background-color: #e8f0fe;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .path-visualization {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Weaver Character Recognizer</h2>
+  </div>
+
+  <div class="controls">
+    <button id="clearBtn">Clear Canvas</button>
+    <button id="processBtn">Process Stroke</button>
+  </div>
+
+  <div class="container">
+    <div class="canvas-container">
+      <canvas id="drawingCanvas"></canvas>
+      <canvas id="gridCanvas" class="grid-overlay"></canvas>
+    </div>
+
+    <div class="results-panel">
+      <div class="mode-selector">
+        <div class="mode-btn" data-mode="0">Ignore</div>
+        <div class="mode-btn active" data-mode="1">Train</div>
+        <div class="mode-btn" data-mode="2">Recognize</div>
+      </div>
+
+      <div id="trainingPanel" class="result-box">
+        <div class="result-title">Training Mode</div>
+        <div class="training-input">
+          <label>Character to train:</label>
+          <input type="text" id="newCharInput" maxlength="1">
+        </div>
+        <div>Draw the character to train the system</div>
+      </div>
+
+      <div class="result-box">
+        <div class="result-title">Grid Representation:</div>
+        <table class="grid" id="gridTable">
+          <tr>
+            <td id="cell-0-0">1</td>
+            <td id="cell-0-1">2</td>
+            <td id="cell-0-2">3</td>
+          </tr>
+          <tr>
+            <td id="cell-1-0">4</td>
+            <td id="cell-1-1">5</td>
+            <td id="cell-1-2">6</td>
+          </tr>
+          <tr>
+            <td id="cell-2-0">7</td>
+            <td id="cell-2-1">8</td>
+            <td id="cell-2-2">9</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="result-box">
+        <div class="result-title">Weaver Code:</div>
+        <div id="directionSequence" class="code-display">-</div>
+        <div class="result-title" style="margin-top: 15px">Encoded Code#:</div>
+        <div id="codeSequence" class="code-sequence">-</div>
+        <div class="result-title" style="margin-top: 15px">Binary:</div>
+        <div id="binaryOutput" class="code-display">-</div>
+        <div class="result-title" style="margin-top: 15px">Hexadecimal:</div>
+        <div id="hexOutput" class="code-display">-</div>
+      </div>
+
+      <div class="result-box">
+        <div class="result-title">Character Dictionary</div>
+        <div class="dictionary-display">
+          <table class="dict-table" id="dictionaryTable">
+            <thead>
+              <tr>
+                <th>Character</th>
+                <th>Code#</th>
+                <th>Direction Sequence</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Dictionary entries will be inserted here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="status-box" id="statusBox">
+        Ready
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global system variables (matching the original PL/I program)
+    const RCHAR = Array(65).fill(' ');       // List of recognized characters
+    let NEWCHAR = '';                        // New character in training mode
+    let CODE = 0;                            // Encoded stroke sequence
+    let FOUND = false;                       // Locate flag
+    let POINTER = 0;                         // Location pointer
+    let ENT = 0;                             // Current number of table entries
+    const LIST = Array(65).fill(0);          // List of recognized code words
+    const DIR_SEQ = Array(65).fill([]);      // Direction sequences (added for UI)
+    let NOTFOUND = 0;                        // Count of input errors
+    let MODE = 1;                            // Mode (0=ignore, 1=train, 2=recognize, 3=stop)
+
+    // Direction encoding constants
+    const DIR = {
+      TB: 8,   // Top to bottom
+      BT: 4,   // Bottom to top
+      LR: 2,   // Left to right
+      RL: 1    // Right to left
+    };
+
+    // Canvas setup
+    const canvas = document.getElementById('drawingCanvas');
+    const ctx = canvas.getContext('2d');
+    const gridCanvas = document.getElementById('gridCanvas');
+    const gridCtx = gridCanvas.getContext('2d');
+
+    // UI elements
+    const clearBtn = document.getElementById('clearBtn');
+    const processBtn = document.getElementById('processBtn');
+    const modeBtns = document.querySelectorAll('.mode-btn');
+    const newCharInput = document.getElementById('newCharInput');
+    const directionSequence = document.getElementById('directionSequence');
+    const codeSequence = document.getElementById('codeSequence');
+    const binaryOutput = document.getElementById('binaryOutput');
+    const hexOutput = document.getElementById('hexOutput');
+    const statusBox = document.getElementById('statusBox');
+    const dictionaryTable = document.getElementById('dictionaryTable');
+    const trainingPanel = document.getElementById('trainingPanel');
+
+    // Drawing state
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+    let currentCell = null;
+    let prevCell = null;
+    let strokeDirections = [];
+    let currentPath = [];
+    
+    // Set canvas size
+    function resizeCanvas() {
+      const containerWidth = canvas.parentElement.clientWidth;
+      const containerHeight = canvas.parentElement.clientHeight;
+      canvas.width = containerWidth;
+      canvas.height = containerHeight;
+      gridCanvas.width = containerWidth;
+      gridCanvas.height = containerHeight;
+      drawGrid();
+      clearCanvas();
+    }
+
+    // Clear the canvas and reset current stroke data
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      strokeDirections = [];
+      currentPath = [];
+      currentCell = null;
+      prevCell = null;
+      directionSequence.textContent = '-';
+      codeSequence.textContent = '-';
+      binaryOutput.textContent = '-';
+      hexOutput.textContent = '-';
+      statusBox.textContent = 'Ready';
+      CODE = 0;
+    }
+
+    // Draw the 3x3 grid overlay
+    function drawGrid() {
+      const width = gridCanvas.width;
+      const height = gridCanvas.height;
+      
+      // Calculate grid cell size (use the smaller dimension)
+      const size = Math.min(width, height);
+      const cellSize = size / 3;
+      
+      // Calculate the starting position to center the grid
+      const startX = (width - size) / 2;
+      const startY = (height - size) / 2;
+      
+      gridCtx.clearRect(0, 0, width, height);
+      gridCtx.strokeStyle = '#aaa';
+      gridCtx.lineWidth = 1;
+      
+      // Draw vertical lines
+      for (let i = 0; i <= 3; i++) {
+        gridCtx.beginPath();
+        const x = startX + (i * cellSize);
+        gridCtx.moveTo(x, startY);
+        gridCtx.lineTo(x, startY + size);
+        gridCtx.stroke();
+      }
+      
+      // Draw horizontal lines
+      for (let i = 0; i <= 3; i++) {
+        gridCtx.beginPath();
+        const y = startY + (i * cellSize);
+        gridCtx.moveTo(startX, y);
+        gridCtx.lineTo(startX + size, y);
+        gridCtx.stroke();
+      }
+      
+      // Store grid dimensions for later use
+      window.gridInfo = {
+        startX,
+        startY,
+        cellSize,
+        size
+      };
+    }
+
+    // Get the cell coordinates based on canvas position
+    function getCellCoords(x, y) {
+      const { startX, startY, cellSize, size } = window.gridInfo;
+      
+      // Check if the point is inside the grid
+      if (x < startX || x > startX + size || y < startY || y > startY + size) {
+        return null;
+      }
+      
+      const col = Math.floor((x - startX) / cellSize);
+      const row = Math.floor((y - startY) / cellSize);
+      
+      // Ensure we're within the 3x3 grid
+      if (col >= 0 && col < 3 && row >= 0 && row < 3) {
+        return { row, col };
+      }
+      
+      return null;
+    }
+
+    // Get cell number (1-9) from row and column
+    function getCellNumber(row, col) {
+      return row * 3 + col + 1;
+    }
+
+    // Determine direction between two cells
+    function getDirection(fromCell, toCell) {
+      if (!fromCell || !toCell) return null;
+      
+      let direction = 0;
+      
+      // Vertical direction
+      if (toCell.row > fromCell.row) {
+        direction += DIR.TB; // Top to bottom
+      } else if (toCell.row < fromCell.row) {
+        direction += DIR.BT; // Bottom to top
+      }
+      
+      // Horizontal direction
+      if (toCell.col > fromCell.col) {
+        direction += DIR.LR; // Left to right
+      } else if (toCell.col < fromCell.col) {
+        direction += DIR.RL; // Right to left
+      }
+      
+      // Default to 7 if no direction (same as original code)
+      if (direction === 0) {
+        direction = 7;
+      }
+      
+      return direction;
+    }
+
+    // Convert direction code to direction name
+    function getDirectionName(code) {
+      const dirs = [];
+      
+      if (code & DIR.TB) dirs.push("TB");
+      if (code & DIR.BT) dirs.push("BT");
+      if (code & DIR.LR) dirs.push("LR");
+      if (code & DIR.RL) dirs.push("RL");
+      
+      if (dirs.length === 0) return "NO DIR";
+      return dirs.join("+");
+    }
+
+    // RESTART procedure - Clear the data area
+    function restart() {
+      POINTER = 0;
+      ENT = 0;
+      CODE = 0;
+      MODE = 1; // Default to Train mode
+      NOTFOUND = 0;
+      
+      for (let i = 1; i <= 64; i++) {
+        LIST[i] = 0;
+        RCHAR[i] = ' ';
+        DIR_SEQ[i] = [];
+      }
+      
+      // Update UI
+      updateModeBtns();
+      updateDictionary();
+      clearCanvas();
+      statusBox.textContent = 'System restarted';
+    }
+
+    // DECODE procedure - Process the stroke sequence into CODE
+    function decode() {
+      CODE = 0;
+      let c;
+      
+      // Process each direction in the stroke directions array
+      for (let i = 0; i < strokeDirections.length; i++) {
+        c = strokeDirections[i];
+        
+        // Skip consecutive duplicate directions (similar to original algorithm)
+        if (i > 0 && c === strokeDirections[i-1]) continue;
+        
+        // Same encoding as original algorithm: CODE# = CODE# * 10 + C - 1
+        CODE = CODE * 10 + c;
+      }
+      
+      return CODE;
+    }
+
+    // LOOKUP procedure - Find the CODE in the LIST
+    function lookup() {
+      let head = 0;
+      let tail = ENT + 1;
+      let mid;
+      
+      FOUND = false;
+      
+      // Standard binary search
+      while (tail - head > 1) {
+        mid = Math.floor((head + tail) / 2);
+        
+        if (CODE < LIST[mid]) {
+          tail = mid;
+        } else if (CODE > LIST[mid]) {
+          head = mid;
+        } else {
+          // Found
+          FOUND = true;
+          NOTFOUND = 0;
+          POINTER = mid;
+          return;
+        }
+      }
+      
+      // Not found
+      POINTER = head;
+      NOTFOUND++;
+    }
+
+    // INSERT procedure - Add new character and code to dictionary
+    function insert() {
+      if (FOUND) return; // Already in dictionary
+      if (!NEWCHAR) {
+        statusBox.textContent = 'Please enter a character to train';
+        return;
+      }
+      
+      POINTER++;
+      
+      // Shift elements to make room
+      for (let i = ENT; i >= POINTER; i--) {
+        LIST[i+1] = LIST[i];
+        RCHAR[i+1] = RCHAR[i];
+        DIR_SEQ[i+1] = DIR_SEQ[i];
+      }
+      
+      // Insert the new character and code
+      LIST[POINTER] = CODE;
+      RCHAR[POINTER] = NEWCHAR;
+      DIR_SEQ[POINTER] = [...strokeDirections]; // Store a copy of the directions
+      
+      ENT++;
+      
+      // Update the UI
+      updateDictionary();
+      statusBox.textContent = `Character '${NEWCHAR}' trained successfully`;
+    }
+
+    // Process the current stroke
+    function processStroke() {
+      if (strokeDirections.length === 0) {
+        statusBox.textContent = 'Please draw a character first';
+        return;
+      }
+      
+      // Get the training character if in training mode
+      if (MODE === 1) {
+        NEWCHAR = newCharInput.value;
+        if (!NEWCHAR) {
+          statusBox.textContent = 'Please enter a character to train';
+          return;
+        }
+      }
+      
+      // Decode the stroke sequence
+      CODE = decode();
+      
+      // Display the encoded information
+      displayEncodedInfo();
+      
+      // Lookup the code in the dictionary
+      lookup();
+      
+      // Process based on mode
+      if (MODE === 1) { // Training mode
+        insert();
+      } else if (MODE === 2) { // Recognition mode
+        if (FOUND) {
+          statusBox.textContent = `Recognized as character: '${RCHAR[POINTER]}'`;
+        } else {
+          if (NOTFOUND === 1) {
+            statusBox.textContent = 'Character not recognized. Try again.';
+          } else {
+            statusBox.textContent = 'Still not recognized. Retrain for this symbol.';
+          }
+        }
+      }
+    }
+
+    // Display encoded information in the UI
+    function displayEncodedInfo() {
+      // Format directions
+      const dirNames = strokeDirections.map(getDirectionName);
+      directionSequence.textContent = dirNames.join(' → ');
+      
+      // Display CODE value
+      codeSequence.textContent = CODE;
+      
+      // Binary representation
+      const binary = CODE.toString(2).padStart(16, '0');
+      binaryOutput.textContent = binary;
+      
+      // Hex representation
+      const hex = CODE.toString(16).toUpperCase().padStart(4, '0');
+      hexOutput.textContent = '0x' + hex;
+    }
+
+    // Update the dictionary table in UI
+    function updateDictionary() {
+      const tbody = dictionaryTable.querySelector('tbody');
+      tbody.innerHTML = '';
+      
+      for (let i = 1; i <= ENT; i++) {
+        const row = document.createElement('tr');
+        
+        // Character
+        const charCell = document.createElement('td');
+        charCell.textContent = RCHAR[i] || ' ';
+        row.appendChild(charCell);
+        
+        // Code#
+        const codeCell = document.createElement('td');
+        codeCell.textContent = LIST[i];
+        row.appendChild(codeCell);
+        
+        // Direction sequence
+        const dirCell = document.createElement('td');
+        const dirNames = DIR_SEQ[i].map(getDirectionName);
+        dirCell.textContent = dirNames.join(' → ');
+        row.appendChild(dirCell);
+        
+        tbody.appendChild(row);
+      }
+    }
+
+    // Update mode buttons UI
+    function updateModeBtns() {
+      modeBtns.forEach(btn => {
+        const btnMode = parseInt(btn.dataset.mode);
+        if (btnMode === MODE) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+      
+      // Show/hide training panel
+      if (MODE === 1) {
+        trainingPanel.style.display = 'block';
+      } else {
+        trainingPanel.style.display = 'none';
+      }
+      
+      // Update status
+      const modeNames = ['Ignore', 'Train', 'Recognize', 'Stop'];
+      statusBox.textContent = `Mode: ${modeNames[MODE]}`;
+    }
+
+    // Highlight a cell in the grid table
+    function highlightCell(row, col) {
+      const cellId = `cell-${row}-${col}`;
+      const cell = document.getElementById(cellId);
+      
+      if (cell) {
+        const originalBg = cell.style.backgroundColor;
+        cell.style.backgroundColor = '#4285f4';
+        cell.style.color = 'white';
+        
+        setTimeout(() => {
+          cell.style.backgroundColor = originalBg;
+          cell.style.color = 'black';
+        }, 300);
+      }
+    }
+
+    // Event handlers for drawing
+    function startDrawing(e) {
+      e.preventDefault();
+      const coords = getCoordinates(e);
+      const cellCoords = getCellCoords(coords.x, coords.y);
+      
+      isDrawing = true;
+      [lastX, lastY] = [coords.x, coords.y];
+      
+      // Start a new path for this stroke
+      currentPath = [{x: coords.x, y: coords.y}];
+      strokeDirections = [];
+      
+      if (cellCoords) {
+        currentCell = cellCoords;
+        prevCell = null;
+      } else {
+        currentCell = null;
+        prevCell = null;
+      }
+    }
+
+    function stopDrawing() {
+      if (isDrawing) {
+        isDrawing = false;
+        ctx.beginPath();
+        currentCell = null;
+        prevCell = null;
+      }
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+      e.preventDefault();
+
+      const coords = getCoordinates(e);
+      const x = coords.x;
+      const y = coords.y;
+      
+      // Draw the line
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = 'black';
+      ctx.beginPath();
+      ctx.moveTo(lastX, lastY);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      
+      // Add point to the current path
+      currentPath.push({x, y});
+      
+      // Get current cell
+      const cellCoords = getCellCoords(x, y);
+      if (cellCoords) {
+        // We've moved to a different cell
+        if (!currentCell || 
+            currentCell.row !== cellCoords.row || 
+            currentCell.col !== cellCoords.col) {
+          
+          prevCell = currentCell;
+          currentCell = cellCoords;
+          
+          // Determine direction if we have a previous cell
+          if (prevCell) {
+            const direction = getDirection(prevCell, currentCell);
+            if (direction) {
+              strokeDirections.push(direction);
+              
+              // Display the direction
+              const dirName = getDirectionName(direction);
+              if (directionSequence.textContent === '-') {
+                directionSequence.textContent = dirName;
+              } else {
+                directionSequence.textContent += ' → ' + dirName;
+              }
+            }
+          }
+          
+          // Highlight the cell
+          highlightCell(cellCoords.row, cellCoords.col);
+        }
+      }
+      
+      [lastX, lastY] = [x, y];
+    }
+
+    // Helper to get coordinates from different event types
+    function getCoordinates(event) {
+      if (event.touches && event.touches.length > 0) {
+        return {
+          x: event.touches[0].clientX - canvas.getBoundingClientRect().left,
+          y: event.touches[0].clientY - canvas.getBoundingClientRect().top
+        };
+      } else {
+        return {
+          x: event.clientX - canvas.getBoundingClientRect().left,
+          y: event.clientY - canvas.getBoundingClientRect().top
+        };
+      }
+    }
+
+    // Attach events
+    window.addEventListener('resize', resizeCanvas);
+    canvas.addEventListener('pointerdown', startDrawing, { passive: false });
+    canvas.addEventListener('pointermove', draw, { passive: false });
+    canvas.addEventListener('pointerup', stopDrawing);
+    canvas.addEventListener('pointerout', stopDrawing);
+    
+    canvas.addEventListener('touchstart', startDrawing, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', stopDrawing);
+    
+    clearBtn.addEventListener('click', clearCanvas);
+    processBtn.addEventListener('click', processStroke);
+    
+    // Mode selector buttons
+    modeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        MODE = parseInt(btn.dataset.mode);
+        updateModeBtns();
+      });
+    });
+
+    // Initialize
+    restart();
+    resizeCanvas();
+  </script>
+</body>
+</html>
