@@ -111,9 +111,9 @@ The Ledeen method, developed by Norman Ledeen at Bolt, Beranek and Newman (BBN) 
 
 ### Historical Context
 
-The Ledeen method represented an important bridge between image-based OCR technologies and dynamic handwriting recognition. It was influential in early commercial products like the Apple Penlite handwriting recognition system. However, its focus on positional features without fully leveraging the temporal information of writing made it less suitable for the emerging pen computing devices of the 1990s that could capture the writing process in real-time.
+The Ledeen method represented an important bridge between image-based OCR technologies and dynamic handwriting recognition.  The Weaver algorithm, developed later, addressed these limitations by incorporating both spatial and temporal information, making it more effective for the interactive stylus-based computing that became prevalent in the 1990s and beyond.  A variant of ledeen/weaver was demonstrated in hypercard on a tablet version of a laptop in the late 80's and later "influenced" but not implemented on both newton and the Apple duo Pen computer "penlite", instead a neural network recognizer named Rosetta was shipped. 
 
-The Weaver algorithm, developed later, addressed these limitations by incorporating both spatial and temporal information, making it more effective for the interactive stylus-based computing that became prevalent in the 1990s and beyond.
+
 
 ## Detailed Usage Instructions
 
