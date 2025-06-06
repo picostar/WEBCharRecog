@@ -111,7 +111,7 @@ The Ledeen method, developed by Norman Ledeen at Bolt, Beranek and Newman (BBN) 
 
 ### Historical Context
 
-The Ledeen method represented an important bridge between image-based OCR technologies and dynamic handwriting recognition.  The Weaver algorithm, developed later, addressed these limitations by incorporating both spatial and temporal information, making it more effective for the interactive stylus-based computing that became prevalent in the 1990s and beyond.  A variant of ledeen/weaver was suggested by Alan Kay to Tom Gilley, and Tom (me) demonstrated in hypercard on a tablet version of a laptop in the late 80's and later "influenced" but not implemented on both newton and the Apple duo Pen computer "penlite", instead a neural network recognizer named Rosetta developed and  shipped. 
+The Ledeen method represented an important bridge between image-based OCR technologies and dynamic handwriting recognition.  The Weaver algorithm, developed later, addressed these limitations by incorporating both spatial and temporal information, making it more effective for the interactive stylus-based computing that became prevalent in the 1990s and beyond.  The  ledeen was suggested by Alan Kay to Tom Gilley, and I demonstrated in hypercard on a tablet version of a laptop in the late 80's and later "influenced" but not implemented on both newton and the Apple duo Pen computer "penlite", instead a neural network recognizer named Rosetta developed and  shipped. 
 
 
 
